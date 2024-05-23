@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('yc.jpg'); 
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #message {
+            display: none;
+            text-align: center;
+            font-size: 24px;
+            color: #333;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        /* Existing styles... */
+        .exclamation {
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        .tooltip {
+            display: none;
+            position: absolute;
+            background-color: rgb(107, 128, 156);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #predict-btn {
+            width: 70%;
+            padding: 10px;
+            background-color: rgb(53, 98, 146);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 200px;
+            margin-top: 30px;
+        }
+        #predict-btn:hover {
+            background-color: rgb(0, 86, 179);
+        }
+        #predict-btn-2 {
+            width: 70%;
+            padding: 10px;
+            background-color: rgb(187, 66, 22);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 200px;
+            margin-top: 30px;
+        }
+        #predict-btn-2:hover {
+            background-color: rgb(255, 69, 27);
+        }
+        /* Style for the form headings and paragraphs */
+        h1 {
+            margin-top: 40px;
+            text-align: center;
+            color: rgb(24, 55, 88);
+            margin-bottom: 0.5em;
+            font-size: 30px;
+        }
+
+        p {
+            color: rgb(53, 98, 146);
+            font-size: 21px;
+            margin-bottom: 2em;
+            margin-right: 450px;
+            margin-left: 20px;
+            margin-top: 70px;
+        }
+        h3 {
+            color: rgb(187, 66, 22);
+            font-size: 21px;
+            margin-bottom: 2em;
+            margin-right: 440px;
+            margin-left: 20px;
+            margin-top: 70px;
+        }
+        /* Style the container */
+        .output-container {
+            width: 62%;
+            border: 1px solid #ddd;
+            background-color: rgb(181, 206, 238);
+            font-size: 23px;
+            padding: 50px;
+            margin-top: 0px;
+            border-radius: 10px;
+            padding-bottom: 100px;
+            margin-left: 200px;
+        }
+        .output-container-2 {
+            width: 62%;
+            border: 1px solid #ddd;
+            background-color: rgb(255, 184, 114);
+            font-size: 23px;
+            padding: 50px;
+            margin-top: 0px;
+            border-radius: 10px;
+            padding-bottom: 100px;
+            margin-left: 200px;
+        }
+        .label-{
+            margin-left: 20px;
+        }
+        input, select {
+        width: 70%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        margin-right: 700px;
+        margin-left: 20px;
+        }
+
+        /* Additional styles */
+        .form-container {
+            border-radius: 5px;
+            background-color: #f2f2f2;
+            padding: 20px;
+        }
+    </style>
+    <script>
+    function showTooltip() {
+        var tooltip = document.getElementById('vendorTooltip');
+        tooltip.style.display = 'block';
+    }
+
+    function hideTooltip() {
+        var tooltip = document.getElementById('vendorTooltip');
+        tooltip.style.display = 'none';
+    }
+    </script>
+</head>
+<body>
+    <h1>Fare Amount Estimation and Predicting if the Passenger will be Generous</h1>
+    <p>In this first section, you can enter the required information about your next ride then our model will estimate the fare amount.</p>
+    <form id="predictionForm">
+ 
+        <label for="passengers" class="label-">The number of passengers in the vehicle</label>
+        <input type="number" id="passengers" name="passengers" min="1" required>
+
+        <label for="distance" class="label-">The elapsed trip distance in miles</label>
+        <input type="number" id="distance" name="distance" step="0.1" required>
+
+        <label for="duration" class="label-">The elapsed trip Duration (minutes)</label>
+        <input type="number" id="duration" name="duration" required>
+
+        <label for="pickupHour" class="label-">Pick Up Hour</label>
+        <input type="number" id="pickupHour" name="pickupHour" min="0" max="23" required>
+
+        <label for="vendorID" class="label-">Vendor ID<span class="exclamation" onclick="showTooltip()">!</span></label>
+        <div class="tooltip" id="vendorTooltip" onclick="hideTooltip()">A code indicating the TPEP provider that provided the record.</div>
+        <select id="vendorID" name="vendorID" required>
+        <option value="a">Creative Mobile Technologies, LLC</option>
+        <option value="b">VeriFone Inc</option>
+        </select>
+
+
+
+
+        <input type="button" id="predict-btn"  value="Estimate Fare Amount">
+    </form>
+
+    <div id="lr-array-display"></div>
+    <div class="output-container" id="lr-api-response"></div>
+
+    <script>
+
+
+        // Initialize a reference array with 17 zeros
+        var referenceArray1 = new Array(5).fill(0);
+
+        document.getElementById("predict-btn").addEventListener("click", function () {
+            // Update the reference array with the user's inputs
+            // Example for performance score:
+            var passengersInput = document.getElementById("passengers");
+          if (passengersInput && passengersInput.value) 
+          {
+              referenceArray1[0] = parseFloat(passengersInput.value);
+          }
+          var distanceInput = document.getElementById("distance");
+          if (distanceInput && distanceInput.value) 
+          {
+              referenceArray1[1] = parseFloat(distanceInput.value);
+          }
+          var durationInput = document.getElementById("duration");
+          if (durationInput && durationInput.value) 
+          {
+              referenceArray1[2] = parseFloat(durationInput.value);
+          }
+          var pickupHourInput = document.getElementById("pickupHour");
+          if (pickupHourInput && pickupHourInput.value)  
+          {
+            if(pickupHourInput.value >=6 && pickupHourInput.value < 10)
+                {
+                    referenceArray1[3] = 1;
+                }
+            else if(pickupHourInput.value >=16 && pickupHourInput.value < 20)  
+                {
+                    referenceArray1[3] = 1;
+                }
+            else
+                {
+                    referenceArray1[3] = 0;
+                }
+
+          }
+          var vendorIDInput = document.getElementById("vendorID");
+          if (vendorIDInput && vendorIDInput.value) 
+          {
+              if(vendorIDInput.value === "a")
+              {referenceArray1[4] = 1;}
+              else if(vendorIDInput.value === "b")
+              {referenceArray1[4] = 0;}
+          }
+            // Repeat for other inputs, updating the correct index in referenceArray
+
+            // Display the updated reference array
+            //document.getElementById("lr-array-display").textContent = JSON.stringify(referenceArray1, null, 2);
+
+            // Convert the array to a comma-separated string
+            var arrayString = referenceArray1.join(',');
+
+            // Send the array to the API
+            fetch('https://predicting-taxi-fare.onrender.com/predict/?inputs=' + arrayString)
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    // Display the JSON response
+                    document.getElementById("lr-api-response").textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                });
+
+
+        });
+
+        
+    </script>
+            
+</body>
+<body>
+    <h3>Let's continue to determine if the customer from your previous ride will be generous and leave a 20% or more of the fare amount as a tip. Fill in the following information.</h3>
+    <form id="predictionForm">
+ 
+        <label for="Day" class="label-">Pick Up Day</label>
+        <select name="Day" id="Day">
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+            <option value="7">Sunday</option>
+        </select>
+        <label for="Month" class="label-">Pick Up Month</label>
+        <select name="Month" id="Month">
+            <option value="1">Jan</option>
+            <option value="2">Feb</option>
+            <option value="3">Mar</option>
+            <option value="4">Apr</option>
+            <option value="5">May</option>
+            <option value="6">Jun</option>
+            <option value="7">Jul</option>
+            <option value="8">Aug</option>
+            <option value="9">Sep</option>
+            <option value="10">Oct</option>
+            <option value="11">Nov</option>
+            <option value="12">Dec</option>
+        </select>
+        <label for="Payment type" class="label-">Payment type</label>
+        <select name="Payment type" id="Payment type">
+            <option value="1">Credit card</option>
+            <option value="2">Cash</option>
+            <option value="3">No charge</option>
+            <option value="4">NoDispute</option>
+            <option value="5">Unknown</option>
+            <option value="6">Voided trip</option>
+        </select>
+
+        <label for="rate" class="label-">The final rate code in effect at the end of the trip.</label>
+        <select name="rate" id="rate">
+            <option value="1">Standard rate</option>
+            <option value="2">JFK</option>
+            <option value="3">Newark</option>
+            <option value="4">Nassau or Westchester</option>
+            <option value="5">Negotiated fare</option>
+            <option value="6">Group ride</option>
+        </select>
+
+
+
+        <input type="button" id="predict-btn-2"  value="Will my Employee be Generous?">
+    </form>
+
+    <div id="rf-array-display"></div>
+    <div class="output-container-2" id="api-response"></div>
+
+    <script>
+        // Initialize a reference array with 17 zeros
+        var referenceArray = new Array(346).fill(0);
+
+        document.getElementById("predict-btn-2").addEventListener("click", function () {
+            // Update the reference array with the user's inputs
+            // Example for performance score:
+            var passengersInput = document.getElementById("passengers");
+          if (passengersInput && passengersInput.value) 
+          {
+              referenceArray[0] = parseFloat(passengersInput.value);
+          }
+          var durationInput = document.getElementById("duration");
+          if (durationInput && durationInput.value) 
+          {
+              referenceArray[1] = parseFloat(durationInput.value);
+          }
+          var distanceInput = document.getElementById("distance");
+          if (distanceInput && distanceInput.value) 
+          {
+              referenceArray[2] = parseFloat(distanceInput.value);
+          }
+          // fare_amount
+            var repostring = document.getElementById("lr-api-response").textContent;
+            var fare_amount = parseFloat(repostring.replace(/^\D+/g, ''));
+            referenceArray[3] = fare_amount
+
+          
+          var pickupHourInput = document.getElementById("pickupHour");
+          if (pickupHourInput && pickupHourInput.value)  
+          {
+            // am_rush
+            if(pickupHourInput.value >=6 && pickupHourInput.value < 10)
+                {
+                    referenceArray[4] = 1;
+                }
+            // daytime
+            else if(pickupHourInput.value >=10 && pickupHourInput.value < 16)  
+                {
+                    referenceArray[5] = 1;
+                }
+            // pm_rush
+            else if(pickupHourInput.value >=16 && pickupHourInput.value < 20)  
+                {
+                    referenceArray[6] = 1;
+                }
+            // nighttime
+            else if(pickupHourInput.value >=20 && pickupHourInput.value < 24)  
+                {
+                    referenceArray[7] = 1;
+                }
+            else if(pickupHourInput.value >=0 && pickupHourInput.value < 6)  
+                {
+                    referenceArray[7] = 1;
+                }
+            else
+                {
+                    referenceArray[4] = 0;
+                    referenceArray[5] = 0;
+                    referenceArray[6] = 0;
+                    referenceArray[7] = 0;
+                }
+            var vendorIDInput = document.getElementById("vendorID");
+          if (vendorIDInput && vendorIDInput.value) 
+          {
+              if(vendorIDInput.value === "a")
+              {referenceArray[8] = 1;}
+              else if(vendorIDInput.value === "b")
+              {referenceArray[8] = 0;}
+          }
+             var rateInput = document.getElementById("rate");
+          if (rateInput && rateInput.value) 
+          {
+              if(rateInput.value === "1")
+              {
+                referenceArray[9] = 0;
+                referenceArray[10] = 0;
+                referenceArray[11] = 0;
+                referenceArray[12] = 0;
+                referenceArray[13] = 0;
+
+              }
+              else if(rateInput.value === "2")
+              {
+                referenceArray[9] = 1;
+                referenceArray[10] = 0;
+                referenceArray[11] = 0;
+                referenceArray[12] = 0;
+                referenceArray[13] = 0;
+            }
+              else if(rateInput.value === "3")
+              {
+                referenceArray[9] = 0;
+                referenceArray[10] = 1;
+                referenceArray[11] = 0;
+                referenceArray[12] = 0;
+                referenceArray[13] = 0;
+            }
+              else if(rateInput.value === "4")
+              {
+                referenceArray[9] = 0;
+                referenceArray[10] = 0;
+                referenceArray[11] = 1;
+                referenceArray[12] = 0;
+                referenceArray[13] = 0;
+            }
+              else if(rateInput.value === "5")
+              {
+                referenceArray[9] = 0;
+                referenceArray[10] = 0;
+                referenceArray[11] = 0;
+                referenceArray[12] = 1;
+                referenceArray[13] = 0;
+            }
+              else if(rateInput.value === "6")
+              {
+                referenceArray[9] = 0;
+                referenceArray[10] = 0;
+                referenceArray[11] = 0;
+                referenceArray[12] = 0;
+                referenceArray[13] = 1;
+            }
+          }
+
+          }
+            var DayInput = document.getElementById("Day");
+          if (DayInput && DayInput.value) 
+          {
+                if(DayInput.value === "1")
+                {
+                    referenceArray[329] = 1;
+                    referenceArray[330] = 0;
+                    referenceArray[331] = 0;
+                    referenceArray[332] = 0;
+                    referenceArray[333] = 0;
+                    referenceArray[334] = 0;
+
+                }
+                if(DayInput.value === "2")
+                {
+                    referenceArray[329] = 0;
+                    referenceArray[330] = 0;
+                    referenceArray[331] = 0;
+                    referenceArray[332] = 0;
+                    referenceArray[333] = 1;
+                    referenceArray[334] = 0;
+
+                }
+                if(DayInput.value === "3")
+                {
+                    referenceArray[329] = 0;
+                    referenceArray[330] = 0;
+                    referenceArray[331] = 0;
+                    referenceArray[332] = 0;
+                    referenceArray[333] = 0;
+                    referenceArray[334] = 1;
+
+                }
+                if(DayInput.value === "4")
+                {
+                    referenceArray[329] = 0;
+                    referenceArray[330] = 0;
+                    referenceArray[331] = 0;
+                    referenceArray[332] = 1;
+                    referenceArray[333] = 0;
+                    referenceArray[334] = 0;
+
+                }
+                if(DayInput.value === "5")
+                {
+                    referenceArray[329] = 0;
+                    referenceArray[330] = 0;
+                    referenceArray[331] = 0;
+                    referenceArray[332] = 0;
+                    referenceArray[333] = 0;
+                    referenceArray[334] = 0;
+
+                }
+                if(DayInput.value === "6")
+                {
+                    referenceArray[329] = 0;
+                    referenceArray[330] = 1;
+                    referenceArray[331] = 0;
+                    referenceArray[332] = 0;
+                    referenceArray[333] = 0;
+                    referenceArray[334] = 0;
+
+                }
+                if(DayInput.value === "7")
+                {
+                    referenceArray[329] = 0;
+                    referenceArray[330] = 0;
+                    referenceArray[331] = 1;
+                    referenceArray[332] = 0;
+                    referenceArray[333] = 0;
+                    referenceArray[334] = 0;
+
+                }
+                
+            }
+          var MonthInput = document.getElementById("Month");
+          if (MonthInput && MonthInput.value) 
+          {
+            if(MonthInput.value === "1")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 1;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+            else if(MonthInput.value === "2")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 1;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "3")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 1;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "4")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "5")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 1;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "6")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 1;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "7")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 1;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "8")
+                {
+                    referenceArray[335] = 1;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "9")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 1;
+
+                }
+                else if(MonthInput.value === "10")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 1;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "11")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 0;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 1;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                else if(MonthInput.value === "12")
+                {
+                    referenceArray[335] = 0;
+                    referenceArray[336] = 1;
+                    referenceArray[337] = 0;
+                    referenceArray[338] = 0;
+                    referenceArray[339] = 0;
+                    referenceArray[340] = 0;
+                    referenceArray[341] = 0;
+                    referenceArray[342] = 0;
+                    referenceArray[343] = 0;
+                    referenceArray[344] = 0;
+                    referenceArray[345] = 0;
+
+                }
+                
+          }
+
+            // Repeat for other inputs, updating the correct index in referenceArray
+
+            // Display the updated reference array
+            //document.getElementById("rf-array-display").textContent = JSON.stringify(referenceArray, null, 2);
+
+            // Convert the array to a comma-separated string
+            var arrayString = referenceArray.join(',');
+
+            // Send the array to the API
+            fetch('https://predict-gratuity.onrender.com/predict/?inputs=' + arrayString)
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    // Display the JSON response
+                    document.getElementById("api-response").textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                });
+
+        });
+        
+    </script>       
+</body>
+</html>
